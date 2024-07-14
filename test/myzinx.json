@@ -1,0 +1,6 @@
+{
+  "Name": "myzinx_v0.4",
+  "Host": "0.0.0.0",
+  "Port": 8888,
+  "MaxConn": 3
+}

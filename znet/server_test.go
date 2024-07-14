@@ -2,6 +2,7 @@ package znet
 
 import (
 	"fmt"
+	"myzinx/zconf"
 	"myzinx/ziface"
 	"net"
 	"testing"
@@ -9,33 +10,25 @@ import (
 )
 
 const (
-	ServerName  = "myzinx-v0.1"
-	Network     = "tcp"
-	IP          = "127.0.0.1"
-	Port        = 8888
 	SendMessage = "HELLO"
 )
 
 func TestServer(t *testing.T) {
 	go newClient()
 
-	s := NewServer(
-		ServerName,
-		Network,
-		IP,
-		Port)
+	s := NewServer()
 	s.AddRouter(&myRouter{})
 	s.Serve()
 }
 
 func newClient() {
-	ipAddress := fmt.Sprintf("%s:%d", IP, Port)
+	ipAddress := fmt.Sprintf("%s:%d", zconf.Conf.Host, zconf.Conf.Port)
 
 	// 3秒之后发起测试请求，给服务端开启服务的机会
 	time.Sleep(3 * time.Second)
 
 	// 模拟一个连接
-	conn, err := net.Dial(Network, ipAddress)
+	conn, err := net.Dial(zconf.Conf.Network, ipAddress)
 	if err != nil {
 		fmt.Println("[ERROR client1] Client create error", err)
 	}

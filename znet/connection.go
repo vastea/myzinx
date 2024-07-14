@@ -3,6 +3,7 @@ package znet
 import (
 	"fmt"
 	"io"
+	"myzinx/zconf"
 	"myzinx/ziface"
 	"net"
 )
@@ -40,7 +41,7 @@ func (c *Connection) StartReader() {
 
 	for {
 		// 读取客户端的数据到buf中
-		buf := make([]byte, 4096)
+		buf := make([]byte, zconf.Conf.MaxPackageSize)
 		n, err := c.Conn.Read(buf)
 		if n == 0 {
 			return

@@ -3,6 +3,7 @@ package znet
 
 import (
 	"fmt"
+	"myzinx/zconf"
 	"myzinx/ziface"
 	"net"
 )
@@ -22,14 +23,16 @@ type Server struct {
 }
 
 // NewServer 初始化Server
-func NewServer(name, network, ip string, port int) ziface.IServer {
-	return &Server{
-		ServerName: name,
-		Network:    network,
-		IP:         ip,
-		Port:       port,
+func NewServer() ziface.IServer {
+	s := &Server{
+		ServerName: zconf.Conf.Name,
+		Network:    zconf.Conf.Network,
+		IP:         zconf.Conf.Host,
+		Port:       zconf.Conf.Port,
 		Router:     nil,
 	}
+	zconf.Conf.Show()
+	return s
 }
 
 // Start 启动一个Server
@@ -37,7 +40,7 @@ func (s *Server) Start() {
 	ipAddr := fmt.Sprintf("%s:%d", s.IP, s.Port)
 
 	go func() {
-		fmt.Printf("[START] Server Listener at ipAddr is %s starting\n", ipAddr)
+		fmt.Printf("[START] Server %s Listener at ipAddr is starting\n", zconf.Conf.Name)
 		listener, err := net.Listen(s.Network, ipAddr)
 		if err != nil {
 			fmt.Printf("[ERROR] net.Listen error, network is %s, ip is %s, port is %d, error is %v\n",
