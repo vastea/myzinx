@@ -2,6 +2,7 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"myzinx/ziface"
@@ -31,6 +32,20 @@ func NewServer(name, network, ip string, port int) ziface.IServer {
 	}
 }
 
+// CallBackToClient 定义当前客户端连接所绑定的HandleAPI
+// 回写函数，是ziface.iconnection.HandleFunc的实现
+func CallBackToClient(conn net.Conn, data []byte, dn int) error {
+	n, err := io.Copy(os.Stdout, conn)
+	if n == 0 {
+		return nil
+	}
+	if err != nil && err != io.EOF {
+		fmt.Println("[ERROR] Bytes copy error:", err)
+		return errors.New("[Error] The implement of HandleFunc CallBackToClient error")
+	}
+	return nil
+}
+
 // Start 启动一个Server
 func (s *Server) Start() {
 	ipAddr := fmt.Sprintf("%s:%d", s.IP, s.Port)
@@ -45,6 +60,8 @@ func (s *Server) Start() {
 		}
 
 		fmt.Println("[START] Start myzinx server is successful, the serverName is: ", s.ServerName)
+
+		var cid uint32 = 0 // 定义connection的ConnId
 		// 接收监听
 		for {
 			conn, err := listener.Accept()
@@ -54,18 +71,10 @@ func (s *Server) Start() {
 			}
 			fmt.Println("与客户端连接成功", conn.RemoteAddr())
 			// 与客户端建立连接成功之后，进行业务处理
-			go func() {
-				for {
-					n, err := io.Copy(os.Stdout, conn)
-					if n == 0 {
-						return
-					}
-					if err != nil && err != io.EOF {
-						fmt.Println("[ERROR] Bytes copy error:", err)
-						return
-					}
-				}
-			}()
+			// 将conn交给connection去处理
+			connection := NewConnection(conn, cid, CallBackToClient)
+			go connection.Start()
+			cid++
 		}
 	}()
 }
