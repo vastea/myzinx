@@ -2,12 +2,9 @@
 package znet
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"myzinx/ziface"
 	"net"
-	"os"
 )
 
 // Server 是抽象类IServer的实现，用于定义一个Server服务器模块
@@ -20,6 +17,8 @@ type Server struct {
 	IP string
 	// Port 服务器绑定的端口
 	Port int
+	// 当前Server的Router
+	Router ziface.IRouter
 }
 
 // NewServer 初始化Server
@@ -29,21 +28,8 @@ func NewServer(name, network, ip string, port int) ziface.IServer {
 		Network:    network,
 		IP:         ip,
 		Port:       port,
+		Router:     nil,
 	}
-}
-
-// CallBackToClient 定义当前客户端连接所绑定的HandleAPI
-// 回写函数，是ziface.iconnection.HandleFunc的实现
-func CallBackToClient(conn net.Conn, data []byte, dn int) error {
-	n, err := io.Copy(os.Stdout, conn)
-	if n == 0 {
-		return nil
-	}
-	if err != nil && err != io.EOF {
-		fmt.Println("[ERROR] Bytes copy error:", err)
-		return errors.New("[Error] The implement of HandleFunc CallBackToClient error")
-	}
-	return nil
 }
 
 // Start 启动一个Server
@@ -72,7 +58,7 @@ func (s *Server) Start() {
 			fmt.Println("与客户端连接成功", conn.RemoteAddr())
 			// 与客户端建立连接成功之后，进行业务处理
 			// 将conn交给connection去处理
-			connection := NewConnection(conn, cid, CallBackToClient)
+			connection := NewConnection(conn, cid, s.Router)
 			go connection.Start()
 			cid++
 		}
@@ -90,4 +76,9 @@ func (s *Server) Serve() {
 	s.Start()
 	// 阻塞
 	select {}
+}
+
+// AddRouter 传入一个Router，服务端去建立链接处理消息时按此Router的规则进行处理
+func (s *Server) AddRouter(router ziface.IRouter) {
+	s.Router = router
 }

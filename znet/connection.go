@@ -15,20 +15,20 @@ type Connection struct {
 	ConnId uint32
 	// 当前的链接状态
 	IsOpen bool
-	// 当前链接所绑定的处理业务的方法api
-	HandleAPI ziface.HandleFunc
 	// 告知当前链接已经退出/停止的channel
 	ExitChan chan bool
+	// 当前Connection对应的Router
+	Router ziface.IRouter
 }
 
 // NewConnection 初始化一个Connection
-func NewConnection(conn net.Conn, connId uint32, callbackAPI ziface.HandleFunc) *Connection {
+func NewConnection(conn net.Conn, connId uint32, router ziface.IRouter) *Connection {
 	return &Connection{
-		Conn:      conn,
-		ConnId:    connId,
-		IsOpen:    true,
-		HandleAPI: callbackAPI,
-		ExitChan:  make(chan bool, 1),
+		Conn:     conn,
+		ConnId:   connId,
+		IsOpen:   true,
+		ExitChan: make(chan bool, 1),
+		Router:   router,
 	}
 }
 
@@ -50,11 +50,17 @@ func (c *Connection) StartReader() {
 			return
 		}
 
-		// 调用当前链接所绑定的HandleAPI
-		if err := c.HandleAPI(c.Conn, buf, len(buf)); err != nil {
-			fmt.Println("[ERROR-", c.ConnId, "Connection] HandleAPI handle error:", err)
-			return
+		// 得到当前Connection数据对应的Request数据
+		req := &Request{
+			connection: c,
+			data:       buf,
 		}
+		go func() {
+			// 从路由中，找到注册绑定的Connection对应的Router调用
+			c.Router.PreHandle(req)
+			c.Router.Handle(req)
+			c.Router.PostHandle(req)
+		}()
 	}
 }
 
