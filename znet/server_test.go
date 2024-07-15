@@ -17,9 +17,13 @@ func TestServer_Serve(t *testing.T) {
 	s := NewServer()
 	// 注册钩子函数
 	s.SetOnConnectionStart(func(connection ziface.IConnection) {
+		connection.SetProperty("testProperty", "测试自定义属性")
 		fmt.Println("[HOOK] OnConnectionStart invoke successfully")
 	})
 	s.SetOnConnectionStop(func(connection ziface.IConnection) {
+		if property, err := connection.GetProperty("testProperty"); err == nil {
+			fmt.Println("Test customize property, testProperty =", property)
+		}
 		fmt.Println("[HOOK] OnConnectionStop invoke successfully")
 	})
 	// 注册路由

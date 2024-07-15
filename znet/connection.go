@@ -8,6 +8,7 @@ import (
 	"myzinx/ziface"
 	"myzinx/zpack"
 	"net"
+	"sync"
 )
 
 // Connection 是抽象类IConnection的实现，用于定义一个Connection链接器模块
@@ -24,17 +25,22 @@ type Connection struct {
 	MsgHandler ziface.IMsgHandler
 	// 无缓冲管道，用于读写goroutine之间的通信
 	MsgChan chan []byte
+	// 自定义链接属性集合
+	propertyMap map[string]interface{}
+	// 保护自定义链接属性的锁
+	propertyMapLock sync.RWMutex
 }
 
 // NewConnection 初始化一个Connection
 func NewConnection(server ziface.IServer, conn net.Conn, connId uint32, msgHandler ziface.IMsgHandler) *Connection {
 	c := &Connection{
-		Server:     server,
-		Conn:       conn,
-		ConnId:     connId,
-		IsOpen:     true,
-		MsgHandler: msgHandler,
-		MsgChan:    make(chan []byte),
+		Server:      server,
+		Conn:        conn,
+		ConnId:      connId,
+		IsOpen:      true,
+		MsgHandler:  msgHandler,
+		MsgChan:     make(chan []byte),
+		propertyMap: make(map[string]interface{}),
 	}
 
 	// 将connection加入到ConnectionManager中
@@ -176,4 +182,31 @@ func (c *Connection) SendMessage(msgId uint32, data []byte) error {
 	// 将数据发送给客户端
 	c.MsgChan <- dataBytes
 	return nil
+}
+
+// SetProperty 设置链接属性
+func (c *Connection) SetProperty(key string, value interface{}) {
+	c.propertyMapLock.Lock()
+	defer c.propertyMapLock.Unlock()
+
+	c.propertyMap[key] = value
+}
+
+// GetProperty 获取链接属性
+func (c *Connection) GetProperty(key string) (interface{}, error) {
+	c.propertyMapLock.RLock()
+	defer c.propertyMapLock.RUnlock()
+
+	if value, ok := c.propertyMap[key]; ok {
+		return value, nil
+	}
+	return nil, errors.New("[ERROR] No property =" + key)
+}
+
+// Remove 移除链接属性
+func (c *Connection) Remove(key string) {
+	c.propertyMapLock.Lock()
+	defer c.propertyMapLock.Unlock()
+
+	delete(c.propertyMap, key)
 }
