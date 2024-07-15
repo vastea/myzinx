@@ -17,10 +17,10 @@ type Connection struct {
 	ConnId uint32
 	// 当前的链接状态
 	IsOpen bool
-	// 告知当前链接已经退出/停止的channel
-	ExitChan chan bool
 	// 当前Connection对应的MsgHandler
 	MsgHandler ziface.IMsgHandler
+	// 无缓冲管道，用于读写goroutine之间的通信
+	MsgChan chan []byte
 }
 
 // NewConnection 初始化一个Connection
@@ -29,8 +29,8 @@ func NewConnection(conn net.Conn, connId uint32, msgHandler ziface.IMsgHandler) 
 		Conn:       conn,
 		ConnId:     connId,
 		IsOpen:     true,
-		ExitChan:   make(chan bool, 1),
 		MsgHandler: msgHandler,
+		MsgChan:    make(chan []byte),
 	}
 }
 
@@ -84,12 +84,23 @@ func (c *Connection) StartReader() {
 	}
 }
 
+// StartWriter 链接的写
+func (c *Connection) StartWriter() {
+	fmt.Println("[START-", c.ConnId, "Connection] Writer goroutine is starting")
+	for msgBytes := range c.MsgChan {
+		// 将数据发送给客户端
+		if _, err := c.Conn.Write(msgBytes); err != nil {
+			fmt.Println("[ERROR] The Connection write dataBytes error")
+		}
+	}
+}
+
 // Start 启动链接，即启动链接要处理的业务
 func (c *Connection) Start() {
 	// 启动从当前链接的读数据的业务
 	go c.StartReader()
 	// 启动从当前链接写数据的业务
-
+	go c.StartWriter()
 }
 
 // Stop 关闭链接，主要是关闭服务端与客户端的连接，和Connection中的channel
@@ -107,7 +118,7 @@ func (c *Connection) Stop() {
 		fmt.Println("[ERROR-", c.ConnId, "Connection] Conn close error:", err)
 	}
 	// 关闭管道
-	close(c.ExitChan)
+	close(c.MsgChan)
 }
 
 // GetConn 获取socket连接
@@ -143,8 +154,6 @@ func (c *Connection) SendMessage(msgId uint32, data []byte) error {
 		return errors.New("[ERROR] The Connection Pack data error")
 	}
 	// 将数据发送给客户端
-	if _, err := c.Conn.Write(dataBytes); err != nil {
-		return errors.New("[ERROR] The Connection write dataBytes error")
-	}
+	c.MsgChan <- dataBytes
 	return nil
 }

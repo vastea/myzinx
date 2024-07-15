@@ -51,6 +51,7 @@ func newClient() {
 			buf := make([]byte, zpack.DataPackInstance.GetHeadLen())
 			n, err := io.ReadFull(conn, buf)
 			if n == 0 {
+				fmt.Println("[EOF] The connect read is EOF")
 				return
 			}
 			if err != nil && err != io.EOF {
@@ -97,8 +98,26 @@ func newClient() {
 	if err != nil {
 		fmt.Println("[ERROR client1] Client Pack msg error", err)
 	}
+
+	// 向服务器写数据
+	msgData2 := []byte("World!")
+	msg2 := &zpack.Message{
+		ID:      0,
+		DataLen: uint32(len(msgData2)),
+		Data:    msgData2,
+	}
+	dataBytes2, err := zpack.DataPackInstance.Pack(msg2)
+	if err != nil {
+		fmt.Println("[ERROR client1] Client Pack msg error", err)
+	}
+
+	dataBytes = append(dataBytes, dataBytes2...)
 	_, err = conn.Write(dataBytes)
 	if err != nil {
 		fmt.Println("[ERROR client1] Client write error", err)
 	}
+
+	time.Sleep(10 * time.Second)
+	conn.Close()
+	fmt.Println("[END client1] Client is end")
 }
