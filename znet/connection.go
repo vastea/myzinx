@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"myzinx/zconf"
 	"myzinx/ziface"
 	"myzinx/zpack"
 	"net"
@@ -77,10 +78,14 @@ func (c *Connection) StartReader() {
 			connection: c,
 			msg:        msg,
 		}
-		go func() {
-			// 从路由中，找到注册绑定的Connection对应的Router调用
-			c.MsgHandler.DoMsgHandler(req)
-		}()
+
+		if zconf.Conf.WorkerPoolSize > 0 {
+			fmt.Println("[START] WorkerPool Mode is start...")
+			// 已经开启了工作池机制，将消息发送给worker工作池处理即可
+			c.MsgHandler.SendMessageToTaskQueue(req)
+		} else {
+			go c.MsgHandler.DoMsgHandler(req)
+		}
 	}
 }
 

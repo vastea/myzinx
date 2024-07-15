@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"runtime"
 )
 
 // Conf 全局变量，用于需要取配置的地方
@@ -23,9 +24,11 @@ type Config struct {
 	/*
 		myzinx
 	*/
-	Version        string // 当前myzinx框架的版本
-	MaxConnection  int    // 当前服务器主机允许的最大连接数
-	MaxPackageSize uint32 // 当前myzinx框架数据包的最大值
+	Version          string // 当前myzinx框架的版本
+	MaxConnection    int    // 当前服务器主机允许的最大连接数
+	MaxPackageSize   uint32 // 当前myzinx框架数据包的最大值
+	WorkerPoolSize   uint32 // 当前业务工作worker的goroutine数量
+	MaxWorkerTaskLen uint32 // myzinx框架的每个worker对应的消息队列的任务的数量最大值
 }
 
 // Reload 用于从配置文件zinx.json加载自定义的参数
@@ -66,13 +69,15 @@ func (c *Config) Show() {
 func init() {
 	// 如果配置文件没有加载，赋默认值
 	Conf = &Config{
-		Name:           "MyServer",
-		Version:        "v0.4",
-		Network:        "tcp",
-		Host:           "0.0.0.0",
-		Port:           8888,
-		MaxConnection:  1000,
-		MaxPackageSize: 4096,
+		Name:             "MyServer",
+		Version:          "v0.4",
+		Network:          "tcp",
+		Host:             "0.0.0.0",
+		Port:             8888,
+		MaxConnection:    1000,
+		MaxPackageSize:   4096,
+		WorkerPoolSize:   uint32(runtime.NumCPU()),
+		MaxWorkerTaskLen: 1024,
 	}
 	// 从conf/zinx.json加载用户自定义的参数
 	Conf.Reload("../test/myzinx.json")

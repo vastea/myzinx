@@ -40,6 +40,11 @@ func (s *Server) Start() {
 	ipAddr := fmt.Sprintf("%s:%d", s.IP, s.Port)
 
 	go func() {
+		// 启动server时开启worker工作池
+		go func() {
+			s.MsgHandler.StartWorkerPool()
+		}()
+
 		fmt.Printf("[START] Server %s Listener at ipAddr is starting\n", zconf.Conf.Name)
 		listener, err := net.Listen(s.Network, ipAddr)
 		if err != nil {

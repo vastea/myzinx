@@ -14,6 +14,7 @@ myzinx是根据[刘丹冰老师视频课程](https://www.bilibili.com/video/av71
 5. v0.5: 新增`message`层，用于定义一次请求中的数据格式，使用该格式 (TLV) 解决 tcp 粘包问题。
 6. v0.6: 新增多路由模式，即根据 v0.5 中的`messageID`，定义不同 ID 的 message 的处理方式。
 7. v0.7: `connection`层包含了对本次连接的处理，使用读写分离的 goroutine 处理，方便在读/写前做处理，各司其职。
+8. v0.8: 新增消息队列及任务池机制，减少业务处理的 goroutine 的最大个数，以减小过多的 goroutine 之间切换的成本。
 
 ## 三、建议
 
