@@ -3,8 +3,8 @@ package znet
 
 import (
 	"fmt"
-	"myzinx/zconf"
-	"myzinx/ziface"
+	"github.com/vastea/myzinx/zconf"
+	"github.com/vastea/myzinx/ziface"
 	"net"
 )
 

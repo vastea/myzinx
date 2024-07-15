@@ -3,7 +3,7 @@ package znet
 import (
 	"errors"
 	"fmt"
-	"myzinx/ziface"
+	"github.com/vastea/myzinx/ziface"
 	"sync"
 )
 

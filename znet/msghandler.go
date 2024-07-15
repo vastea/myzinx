@@ -2,8 +2,8 @@ package znet
 
 import (
 	"fmt"
-	"myzinx/zconf"
-	"myzinx/ziface"
+	"github.com/vastea/myzinx/zconf"
+	"github.com/vastea/myzinx/ziface"
 )
 
 // MsgHandler 是消息处理抽象类IMsgHandler的实现，用于定义消息处理模块

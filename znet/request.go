@@ -1,6 +1,6 @@
 package znet
 
-import "myzinx/ziface"
+import "github.com/vastea/myzinx/ziface"
 
 // Request 是抽象类IRequest的实现，用于定义一个Request
 type Request struct {

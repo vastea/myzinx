@@ -1,6 +1,6 @@
 package znet
 
-import "myzinx/ziface"
+import "github.com/vastea/myzinx/ziface"
 
 // BaseRouter 实现router时先嵌入BaseRouter基类，然后根据需要对这个基类的方法进行重写
 // BaseRouter 中实现的IRouter的方法，不需要写实际的逻辑，只是起到一个将接口实现的逻辑，

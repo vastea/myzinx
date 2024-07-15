@@ -3,10 +3,10 @@ package znet
 import (
 	"errors"
 	"fmt"
+	"github.com/vastea/myzinx/zconf"
+	"github.com/vastea/myzinx/ziface"
+	"github.com/vastea/myzinx/zpack"
 	"io"
-	"myzinx/zconf"
-	"myzinx/ziface"
-	"myzinx/zpack"
 	"net"
 	"sync"
 )

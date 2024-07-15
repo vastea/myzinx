@@ -5,8 +5,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"myzinx/zconf"
-	"myzinx/ziface"
+	"github.com/vastea/myzinx/zconf"
+	"github.com/vastea/myzinx/ziface"
 	"sync"
 )
 
