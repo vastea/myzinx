@@ -1,5 +1,6 @@
 {
-  "Name": "myzinx_v0.4",
+  "Name": "myzinx_v0.5",
+  "Version": "0.5",
   "Host": "0.0.0.0",
   "Port": 8888,
   "MaxConn": 3

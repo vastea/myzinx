@@ -1,10 +1,11 @@
 package znet
 
 import (
+	"errors"
 	"fmt"
 	"io"
-	"myzinx/zconf"
 	"myzinx/ziface"
+	"myzinx/zpack"
 	"net"
 )
 
@@ -40,9 +41,9 @@ func (c *Connection) StartReader() {
 	defer c.Stop()
 
 	for {
-		// 读取客户端的数据到buf中
-		buf := make([]byte, zconf.Conf.MaxPackageSize)
-		n, err := c.Conn.Read(buf)
+		// 读取客户端的MessageHead
+		buf := make([]byte, zpack.DataPackInstance.GetHeadLen())
+		n, err := io.ReadFull(c.Conn, buf)
 		if n == 0 {
 			return
 		}
@@ -50,11 +51,31 @@ func (c *Connection) StartReader() {
 			fmt.Println("[ERROR-", c.ConnId, "Connection] Conn read error:", err)
 			return
 		}
+		// 拆包 获取msgLen和msgId
+		msg, err := zpack.DataPackInstance.Unpack(buf)
+		if err != nil {
+			fmt.Println("[ERROR] The server unpack error:", err)
+			return
+		}
+		// 根据msgLen读取MessageData
+		var data []byte
+		if msg.GetDataLen() > 0 {
+			data = make([]byte, msg.GetDataLen())
+			n, err := io.ReadFull(c.Conn, data)
+			if n == 0 {
+				return
+			}
+			if err != nil && err != io.EOF {
+				fmt.Println("[ERROR-", c.ConnId, "Connection] Conn read error:", err)
+				return
+			}
+		}
+		msg.SetData(data)
 
 		// 得到当前Connection数据对应的Request数据
 		req := &Request{
 			connection: c,
-			data:       buf,
+			msg:        msg,
 		}
 		go func() {
 			// 从路由中，找到注册绑定的Connection对应的Router调用
@@ -106,6 +127,26 @@ func (c *Connection) GetRemoteAddr() net.Addr {
 	return c.Conn.RemoteAddr()
 }
 
-func (c *Connection) Send(data []byte) error {
-	panic("not implemented") // TODO: Implement
+// SendMessage 将服务端发给客户端的数据先封包再发送
+func (c *Connection) SendMessage(msgId uint32, data []byte) error {
+	// 判断连接状态
+	if c.IsOpen == false {
+		return errors.New("[ERROR] Connection already closed")
+	}
+	// 对数据封包
+	dp := zpack.DataPackInstance
+	msg := &zpack.Message{
+		ID:      msgId,
+		DataLen: uint32(len(data)),
+		Data:    data,
+	}
+	dataBytes, err := dp.Pack(msg)
+	if err != nil {
+		return errors.New("[ERROR] The Connection Pack data error")
+	}
+	// 将数据发送给客户端
+	if _, err := c.Conn.Write(dataBytes); err != nil {
+		return errors.New("[ERROR] The Connection write dataBytes error")
+	}
+	return nil
 }

@@ -2,23 +2,33 @@ package znet
 
 import (
 	"fmt"
+	"io"
 	"myzinx/zconf"
 	"myzinx/ziface"
+	"myzinx/zpack"
 	"net"
 	"testing"
 	"time"
 )
 
-const (
-	SendMessage = "HELLO"
-)
-
-func TestServer(t *testing.T) {
+func TestServer_Serve(t *testing.T) {
 	go newClient()
 
 	s := NewServer()
 	s.AddRouter(&myRouter{})
 	s.Serve()
+}
+
+type myRouter struct {
+	BaseRouter
+}
+
+func (br *myRouter) Handle(request ziface.IRequest) {
+	fmt.Println("[PROCESS] Handle is starting, the role is write the same content of the client send to client...")
+	err := request.GetConnection().SendMessage(0, []byte("Hello Client, you send content for me is "+string(request.GetData())))
+	if err != nil {
+		fmt.Println("[ERROR client1] Client1 SendMessage error", err)
+	}
 }
 
 func newClient() {
@@ -37,50 +47,58 @@ func newClient() {
 	// 监听服务器端传过来的数据
 	go func() {
 		for {
-			msg := make([]byte, 512)
-			n, err := conn.Read(msg)
-			for p, v := range msg {
-				if v == 0 {
-					msg = msg[:p]
-					break
+			// 读取客户端的MessageHead
+			buf := make([]byte, zpack.DataPackInstance.GetHeadLen())
+			n, err := io.ReadFull(conn, buf)
+			if n == 0 {
+				return
+			}
+			if err != nil && err != io.EOF {
+				if err != nil {
+					fmt.Println("[ERROR client1] Client read error", err)
+				}
+				return
+			}
+			// 拆包 获取msgLen和msgId
+			msg, err := zpack.DataPackInstance.Unpack(buf)
+			if err != nil {
+				if err != nil {
+					fmt.Println("[ERROR client1] Client unpack error", err)
+				}
+				return
+			}
+			// 根据msgLen读取MessageData
+			var data []byte
+			if msg.GetDataLen() > 0 {
+				data = make([]byte, msg.GetDataLen())
+				n, err := io.ReadFull(conn, data)
+				if n == 0 {
+					return
+				}
+				if err != nil && err != io.EOF {
+					if err != nil {
+						fmt.Println("[ERROR client1] Client read error", err)
+					}
+					return
 				}
 			}
-			if err != nil {
-				fmt.Println("[ERROR client1] Client write error", err)
-				return
-			}
-			if n == 0 {
-				fmt.Println("[END] Client reader is end")
-				return
-			}
-			fmt.Println("收到服务端信息: ", string(msg))
+			fmt.Println("收到服务端信息: ", string(data))
 		}
 	}()
 
-	time.Sleep(time.Second)
 	// 向服务器写数据
-	_, err = conn.Write([]byte(SendMessage + "\n"))
+	msgData := []byte("Hello")
+	msg := &zpack.Message{
+		ID:      0,
+		DataLen: uint32(len(msgData)),
+		Data:    msgData,
+	}
+	dataBytes, err := zpack.DataPackInstance.Pack(msg)
+	if err != nil {
+		fmt.Println("[ERROR client1] Client Pack msg error", err)
+	}
+	_, err = conn.Write(dataBytes)
 	if err != nil {
 		fmt.Println("[ERROR client1] Client write error", err)
 	}
-}
-
-type myRouter struct {
-	BaseRouter
-}
-
-func (br *myRouter) PreHandle(request ziface.IRequest) {
-	fmt.Println("[PROCESS] PreHandle is starting...")
-}
-
-func (br *myRouter) Handle(request ziface.IRequest) {
-	fmt.Println("[PROCESS] Handle is starting, the role is write the same content of the client send to client...")
-	_, err := request.GetConnection().GetConn().Write([]byte("Hello Client"))
-	if err != nil {
-		fmt.Println("[ERROR client1] Client write error", err)
-	}
-}
-
-func (br *myRouter) PostHandle(request ziface.IRequest) {
-	fmt.Println("[PROCESS] PostHandle is starting...")
 }
