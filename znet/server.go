@@ -20,16 +20,23 @@ type Server struct {
 	Port int
 	// 当前Server的Router
 	MsgHandler ziface.IMsgHandler
+	// 当前Server的链接管理器
+	ConnectionManager ziface.IConnManager
+	// 该server创建链接之后自动调用的Hook函数
+	OnConnectionStart func(connection ziface.IConnection)
+	// 该server销毁链接之前自动调用的Hook函数
+	OnConnectionStop func(connection ziface.IConnection)
 }
 
 // NewServer 初始化Server
 func NewServer() ziface.IServer {
 	s := &Server{
-		ServerName: zconf.Conf.Name,
-		Network:    zconf.Conf.Network,
-		IP:         zconf.Conf.Host,
-		Port:       zconf.Conf.Port,
-		MsgHandler: NewMsgHandler(),
+		ServerName:        zconf.Conf.Name,
+		Network:           zconf.Conf.Network,
+		IP:                zconf.Conf.Host,
+		Port:              zconf.Conf.Port,
+		MsgHandler:        NewMsgHandler(),
+		ConnectionManager: NewConnManager(),
 	}
 	zconf.Conf.Show()
 	return s
@@ -63,10 +70,15 @@ func (s *Server) Start() {
 				fmt.Println("[ERROR] Accept listener error:", err)
 				return
 			}
-			fmt.Println("与客户端连接成功", conn.RemoteAddr())
+			// 如果超过最大连接数量，那么关闭此连接
+			if s.ConnectionManager.GetConnectionNum() >= zconf.Conf.MaxConnection {
+				conn.Close()
+				continue
+			}
+
 			// 与客户端建立连接成功之后，进行业务处理
 			// 将conn交给connection去处理
-			connection := NewConnection(conn, cid, s.MsgHandler)
+			connection := NewConnection(s, conn, cid, s.MsgHandler)
 			go connection.Start()
 			cid++
 		}
@@ -75,7 +87,9 @@ func (s *Server) Start() {
 
 // Stop 该方法用于将一些服务器的资源、状态或一些已经开辟的连接信息 进行停止或关闭
 func (s *Server) Stop() {
-
+	fmt.Println("[STOP] Myzinx server is stopping...")
+	s.ConnectionManager.ClearConnection()
+	fmt.Println("[STOP] All connection were cleared")
 }
 
 // Serve 暴露给框架使用者，用于启动服务器，并可以在启动之后做一些自定义的业务逻辑
@@ -89,4 +103,35 @@ func (s *Server) Serve() {
 // AddRouter 传入一个Router，服务端去建立链接处理消息时按此Router的规则进行处理
 func (s *Server) AddRouter(msgID uint32, router ziface.IRouter) {
 	s.MsgHandler.AddRouter(msgID, router)
+}
+
+// GetConnectionManager 返回当前server拥有的链接管理器
+func (s *Server) GetConnectionManager() ziface.IConnManager {
+	return s.ConnectionManager
+}
+
+// SetOnConnectionStart 注册OnConnectionStart钩子函数的方法
+func (s *Server) SetOnConnectionStart(hookFunc func(connection ziface.IConnection)) {
+	s.OnConnectionStart = hookFunc
+}
+
+// SetOnConnectionStop 注册OnConnectionStop钩子函数的方法
+func (s *Server) SetOnConnectionStop(hookFunc func(connection ziface.IConnection)) {
+	s.OnConnectionStop = hookFunc
+}
+
+// CallOnConnectionStart 调用OnConnectionStart钩子函数的方法
+func (s *Server) CallOnConnectionStart(connection ziface.IConnection) {
+	if s.OnConnectionStart != nil {
+		fmt.Println("[HOOK] OnConnectionStart is invoked")
+		s.OnConnectionStart(connection)
+	}
+}
+
+// CallOnConnectionStop 调用OnConnectionStop钩子函数的方法
+func (s *Server) CallOnConnectionStop(connection ziface.IConnection) {
+	if s.OnConnectionStop != nil {
+		fmt.Println("[HOOK] OnConnectionStop is invoked")
+		s.OnConnectionStop(connection)
+	}
 }

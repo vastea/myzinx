@@ -12,6 +12,8 @@ import (
 
 // Connection 是抽象类IConnection的实现，用于定义一个Connection链接器模块
 type Connection struct {
+	// 当前connection隶属于哪个Server
+	Server ziface.IServer
 	// 当前的socket连接
 	Conn net.Conn
 	// 链接的ID
@@ -25,14 +27,20 @@ type Connection struct {
 }
 
 // NewConnection 初始化一个Connection
-func NewConnection(conn net.Conn, connId uint32, msgHandler ziface.IMsgHandler) *Connection {
-	return &Connection{
+func NewConnection(server ziface.IServer, conn net.Conn, connId uint32, msgHandler ziface.IMsgHandler) *Connection {
+	c := &Connection{
+		Server:     server,
 		Conn:       conn,
 		ConnId:     connId,
 		IsOpen:     true,
 		MsgHandler: msgHandler,
 		MsgChan:    make(chan []byte),
 	}
+
+	// 将connection加入到ConnectionManager中
+	c.Server.GetConnectionManager().AddConnection(c)
+
+	return c
 }
 
 // StartReader 链接的读
@@ -106,17 +114,24 @@ func (c *Connection) Start() {
 	go c.StartReader()
 	// 启动从当前链接写数据的业务
 	go c.StartWriter()
+	// 按照开发者传递进来的创建链接之后需要调用的处理业务，执行对应的hook函数
+	c.Server.CallOnConnectionStart(c)
 }
 
 // Stop 关闭链接，主要是关闭服务端与客户端的连接，和Connection中的channel
 func (c *Connection) Stop() {
 	fmt.Println("[STOP-", c.ConnId, "Connection] Connection is stopping")
+	c.Server.CallOnConnectionStop(c)
 
 	// 如果当前链接已经关闭
 	if c.IsOpen == false {
 		return
 	}
 	c.IsOpen = false
+
+	// 将当前链接从链接管理器中删除
+	c.Server.GetConnectionManager().RemoveConnection(c)
+
 	// 关闭socket连接
 	err := c.Conn.Close()
 	if err != nil {

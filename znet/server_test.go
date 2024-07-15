@@ -15,6 +15,14 @@ func TestServer_Serve(t *testing.T) {
 	go newClient()
 
 	s := NewServer()
+	// 注册钩子函数
+	s.SetOnConnectionStart(func(connection ziface.IConnection) {
+		fmt.Println("[HOOK] OnConnectionStart invoke successfully")
+	})
+	s.SetOnConnectionStop(func(connection ziface.IConnection) {
+		fmt.Println("[HOOK] OnConnectionStop invoke successfully")
+	})
+	// 注册路由
 	s.AddRouter(0, &myRouter{})
 	s.Serve()
 }
