@@ -15,7 +15,7 @@ func TestServer_Serve(t *testing.T) {
 	go newClient()
 
 	s := NewServer()
-	s.AddRouter(&myRouter{})
+	s.AddRouter(0, &myRouter{})
 	s.Serve()
 }
 

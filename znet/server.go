@@ -19,7 +19,7 @@ type Server struct {
 	// Port 服务器绑定的端口
 	Port int
 	// 当前Server的Router
-	Router ziface.IRouter
+	MsgHandler ziface.IMsgHandler
 }
 
 // NewServer 初始化Server
@@ -29,7 +29,7 @@ func NewServer() ziface.IServer {
 		Network:    zconf.Conf.Network,
 		IP:         zconf.Conf.Host,
 		Port:       zconf.Conf.Port,
-		Router:     nil,
+		MsgHandler: NewMsgHandler(),
 	}
 	zconf.Conf.Show()
 	return s
@@ -61,7 +61,7 @@ func (s *Server) Start() {
 			fmt.Println("与客户端连接成功", conn.RemoteAddr())
 			// 与客户端建立连接成功之后，进行业务处理
 			// 将conn交给connection去处理
-			connection := NewConnection(conn, cid, s.Router)
+			connection := NewConnection(conn, cid, s.MsgHandler)
 			go connection.Start()
 			cid++
 		}
@@ -82,6 +82,6 @@ func (s *Server) Serve() {
 }
 
 // AddRouter 传入一个Router，服务端去建立链接处理消息时按此Router的规则进行处理
-func (s *Server) AddRouter(router ziface.IRouter) {
-	s.Router = router
+func (s *Server) AddRouter(msgID uint32, router ziface.IRouter) {
+	s.MsgHandler.AddRouter(msgID, router)
 }

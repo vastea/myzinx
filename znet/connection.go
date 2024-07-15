@@ -19,18 +19,18 @@ type Connection struct {
 	IsOpen bool
 	// 告知当前链接已经退出/停止的channel
 	ExitChan chan bool
-	// 当前Connection对应的Router
-	Router ziface.IRouter
+	// 当前Connection对应的MsgHandler
+	MsgHandler ziface.IMsgHandler
 }
 
 // NewConnection 初始化一个Connection
-func NewConnection(conn net.Conn, connId uint32, router ziface.IRouter) *Connection {
+func NewConnection(conn net.Conn, connId uint32, msgHandler ziface.IMsgHandler) *Connection {
 	return &Connection{
-		Conn:     conn,
-		ConnId:   connId,
-		IsOpen:   true,
-		ExitChan: make(chan bool, 1),
-		Router:   router,
+		Conn:       conn,
+		ConnId:     connId,
+		IsOpen:     true,
+		ExitChan:   make(chan bool, 1),
+		MsgHandler: msgHandler,
 	}
 }
 
@@ -79,9 +79,7 @@ func (c *Connection) StartReader() {
 		}
 		go func() {
 			// 从路由中，找到注册绑定的Connection对应的Router调用
-			c.Router.PreHandle(req)
-			c.Router.Handle(req)
-			c.Router.PostHandle(req)
+			c.MsgHandler.DoMsgHandler(req)
 		}()
 	}
 }
